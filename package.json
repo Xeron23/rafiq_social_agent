@@ -1,0 +1,48 @@
+{
+  "name": "rafiq_social_agent",
+  "version": "1.0.0",
+  "description": "Rafiq Worker AI Agent for Autonomous Social Media Management",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "cli": "tsx src/cli.ts",
+    "build": "tsc && cp src/infrastructure/database/schema.sql dist/infrastructure/database/schema.sql",
+    "start": "node dist/index.js",
+    "test": "vitest run --maxWorkers=1",
+    "test:seq": "vitest run --maxWorkers=1 --reporter=verbose"
+  },
+  "keywords": [
+    "ai-agent",
+    "social-media",
+    "mastra",
+    "rafiq-worker",
+    "capstone"
+  ],
+  "author": "Xeron (R)",
+  "license": "ISC",
+  "dependencies": {
+    "@ai-sdk/openai": "^4.0.83",
+    "@inquirer/prompts": "^8.7.2",
+    "@mastra/core": "^1.73.0",
+    "@mastra/memory": "^1.34.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "axios": "^1.20.0",
+    "chalk": "^6.0.1",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.5",
+    "express": "^5.2.1",
+    "ora": "^9.4.1",
+    "pg": "^8.23.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.3",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  }
+}

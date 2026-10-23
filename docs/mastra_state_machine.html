@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Mastra Agent Workflow &amp; State Machine Architecture</title>
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 8mm 8mm 8mm 8mm;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #0f172a;
+    background-color: #ffffff;
+    line-height: 1.35;
+    font-size: 8.8pt;
+    margin: 0;
+    padding: 0;
+  }
+  .header {
+    border-bottom: 2px solid #2563eb;
+    padding-bottom: 4px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  h1 {
+    color: #0f172a;
+    font-size: 14pt;
+    font-weight: 800;
+    margin: 0;
+  }
+  .subtitle {
+    font-size: 8pt;
+    color: #64748b;
+    margin-top: 2px;
+  }
+  .badge {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 7.5pt;
+    font-weight: 600;
+  }
+
+  /* Process Flow Diagram */
+  .flow-container {
+    background: #090d16;
+    color: #f8fafc;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 6.8pt;
+    line-height: 1.15;
+    white-space: pre;
+    overflow: hidden;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  /* Workflow Step Cards */
+  .workflow-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .step-node {
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    background: #f8fafc;
+    padding: 6px 8px;
+    position: relative;
+  }
+  .step-node.hitl {
+    border-color: #ef4444;
+    background: #fef2f2;
+  }
+  .step-node.sched {
+    border-color: #10b981;
+    background: #f0fdf4;
+  }
+  .step-node.canonical {
+    border-color: #8b5cf6;
+    background: #f5f3ff;
+  }
+
+  .node-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 3px;
+  }
+  .node-title {
+    font-weight: 700;
+    font-size: 8.5pt;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .node-type {
+    font-size: 7pt;
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 3px;
+    text-transform: uppercase;
+  }
+  .type-step { background: #e2e8f0; color: #334155; }
+  .type-tool { background: #dbeafe; color: #1e40af; }
+  .type-suspend { background: #fee2e2; color: #991b1b; }
+  .type-queue { background: #dcfce7; color: #166534; }
+
+  .node-body {
+    display: grid;
+    grid-template-columns: 1.1fr 1.3fr 1.2fr;
+    gap: 6px;
+    font-size: 7.6pt;
+    background: #ffffff;
+    padding: 5px 6px;
+    border-radius: 4px;
+    border: 1px solid #e2e8f0;
+  }
+  .io-col strong {
+    color: #475569;
+    display: block;
+    font-size: 7pt;
+    text-transform: uppercase;
+    margin-bottom: 1px;
+  }
+  .io-col span {
+    color: #0f172a;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 7.2pt;
+  }
+
+  .footer {
+    border-top: 1px solid #e2e8f0;
+    padding-top: 4px;
+    font-size: 7pt;
+    color: #94a3b8;
+    display: flex;
+    justify-content: space-between;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Mastra Agent Execution Pipeline &amp; State Machine</h1>
+    <div class="subtitle">Spesifikasi Alur Kerja Teknis: Campaign ➔ Strategy ➔ Planning ➔ Canonical ➔ HITL ➔ Scheduling</div>
+  </div>
+  <div class="badge">Mastra Framework Architecture</div>
+</div>
+
+<div class="flow-container">┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                                 MASTRA AGENT WORKFLOW STATE MACHINE                                                    │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  [ USER CHAT INTENT ]
+          │  input: { goal: "Q4 SaaS Launch", duration: 14, channels: ["X", "LinkedIn", "IG"] }
+          ▼
+  ┌─────────────────────────────────┐
+  │  Step 1: IngestContextStep      │ ◄─── Read Context (Isolated): Project Context Store (ICP, Pillars, Brand Tone)
+  └────────────────┬────────────────┘
+                   │  state: { companyId, projectId, icp, brandVoice, activePillars }
+                   ▼
+  ┌─────────────────────────────────┐
+  │  Step 2: StrategyAnalysisStep   │ ◄─── Invokes Mastra Tool: trendListeningTool({ keywords, pillars })
+  └────────────────┬────────────────┘
+                   │  output: { keyInsights, trendsList, competitorAngles }
+                   ▼
+  ┌─────────────────────────────────┐
+  │  Step 3: ContentPlanningStep    │ ◄─── Formulates Campaign Brief (Distribution ratio, posting cadence, channel targets)
+  └────────────────┬────────────────┘
+                   │  output: { campaignBriefId, cadence, targetPlatforms, allocatedPillars }
+                   ▼
+  ┌─────────────────────────────────┐
+  │  Step 4: Topic & Canonical Step │ ◄─── SINTESIS RAW MATERIAL: Topic Mapping (1..N) + Canonical Content Synthesis
+  └────────────────┬────────────────┘      { mainThesis, hooksBank[], coreArguments[], facts[], ctaVariations[] }
+                   │
+                   ▼
+ ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  🛑 STATE: SUSPENDED (Awaiting Human Approval)  ──► Mastra Workflow Execution di-pause secara atomik di memory/DB
+ ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+                   │
+         ┌─────────┴──────────────────────────────────────────┐
+         ▼ (User minta koreksi / feedback chat)               ▼ (User klik '1-Click Approve Matrix')
+  ┌───────────────────────────────┐                  ┌──────────────────────────────────────────────────┐
+  │ Action: MutateTopicOrAngle    │                  │  workflow.resume(runId, { approval: 'APPROVED' })│
+  └──────────────┬────────────────┘                  └────────────────────────┬─────────────────────────┘
+                 │ (Loopback ke Step 4)                                       │
+                 └────────────────────────────────────────────────────────────┤
+                                                                              ▼
+                                                     ┌──────────────────────────────────────────────────┐
+                                                     │  Step 5: MultiPlatformAdapterStep                │
+                                                     │  (Parallel Execution via Deterministic Compilers)│
+                                                     └────────────────────────┬─────────────────────────┘
+                                                                              │
+                                       ┌──────────────────────────────────────┼──────────────────────────────────────┐
+                                       ▼                                      ▼                                      ▼
+                            ┌─────────────────────┐                ┌─────────────────────┐                ┌─────────────────────┐
+                            │    X (Twitter)      │                │  LinkedIn Adapter   │                │ Instagram Carousel  │
+                            │  Payload (&le;280 c) │                │  Payload (Long)     │                │ Payload (5 Slides)  │
+                            └──────────┬──────────┘                └──────────┬──────────┘                └──────────┬──────────┘
+                                       │                                      │                                      │
+                                       └──────────────────────────────────────┼──────────────────────────────────────┘
+                                                                              ▼
+                                                     ┌──────────────────────────────────────────────────┐
+                                                     │  Step 6: Scheduling & Dispatch Queue             │
+                                                     │  - Lock payload to DB with status: 'SCHEDULED'   │
+                                                     │  - Register cron/event timer for 24/7 background │
+                                                     └────────────────────────┬─────────────────────────┘
+                                                                              │ (Tepat waktu jadwal eksekusi)
+                                                                              ▼
+                                                     ┌──────────────────────────────────────────────────┐
+                                                     │  Step 7: Social Media API Publishing             │
+                                                     └────────────────────────┬─────────────────────────┘
+                                                                              │ (Pasca rilis +24-72h)
+                                                                              ▼
+                                                     ┌──────────────────────────────────────────────────┐
+                                                     │  Step 8: Closed-Loop Analytics Evaluation        │
+                                                     │  - Fetch impressions, CTR & engagement delta     │
+                                                     │  - Inject strategic insights ➔ Project Store     │
+                                                     └──────────────────────────────────────────────────┘</div>
+
+<div class="workflow-grid">
+
+  <div class="step-node">
+    <div class="node-header">
+      <div class="node-title"><b>01.</b> IngestContextStep &amp; Strategy Analysis</div>
+      <span class="node-type type-tool">Mastra Agent + Tool</span>
+    </div>
+    <div class="node-body">
+      <div class="io-col">
+        <strong>Trigger / Input</strong>
+        <span>userChatIntent + projectId</span>
+      </div>
+      <div class="io-col">
+        <strong>Aksi Mastra</strong>
+        <span>Agent memanggil <code>trendListeningTool</code> untuk scraping data tren dan memadukan dengan ICP di <code>Project Context Store</code>.</span>
+      </div>
+      <div class="io-col">
+        <strong>Data Output</strong>
+        <span><code>TrendReport</code> + <code>CampaignBrief</code></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="step-node canonical">
+    <div class="node-header">
+      <div class="node-title"><b>02.</b> Content Planning &amp; Canonical Drafting Step</div>
+      <span class="node-type type-step">Mastra Workflow Step</span>
+    </div>
+    <div class="node-body">
+      <div class="io-col">
+        <strong>Input</strong>
+        <span><code>CampaignBrief</code> + Pilar</span>
+      </div>
+      <div class="io-col">
+        <strong>Aksi Mastra</strong>
+        <span>Memetakan kalender 15 slot topik &amp; menyusun <b>Raw Canonical Content</b> (Tesis, Bank 5 Hooks, Argumen Logis, Data Fakta, CTA).</span>
+      </div>
+      <div class="io-col">
+        <strong>Data Output</strong>
+        <span><code>TopicMapping[]</code> + <code>CanonicalDraft[]</code></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="step-node hitl">
+    <div class="node-header">
+      <div class="node-title"><b>03.</b> SuspendForHITLGate (Human-in-the-Loop Checkpoint)</div>
+      <span class="node-type type-suspend">Workflow Suspended</span>
+    </div>
+    <div class="node-body">
+      <div class="io-col">
+        <strong>State Mesin</strong>
+        <span><code>state: SUSPENDED</code></span>
+      </div>
+      <div class="io-col">
+        <strong>Mekanisme Interaksi</strong>
+        <span>Mastra membekukan eksekusi. User meninjau tabel topik &amp; raw draft di UI. Bisa mutasi chat ("revisi hook") atau klik <b>1-Click Approve</b>.</span>
+      </div>
+      <div class="io-col">
+        <strong>Resume Trigger</strong>
+        <span><code>workflow.resume(runId, APPROVED)</code></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="step-node">
+    <div class="node-header">
+      <div class="node-title"><b>04.</b> MultiPlatformAdapterStep (Parallel Compilers)</div>
+      <span class="node-type type-step">Parallel Step</span>
+    </div>
+    <div class="node-body">
+      <div class="io-col">
+        <strong>Input</strong>
+        <span>Approved <code>CanonicalDraft</code></span>
+      </div>
+      <div class="io-col">
+        <strong>Aksi Mastra</strong>
+        <span>Mengeksekusi compiler deterministik paralel: X (&le;280 karakter), LinkedIn profesional, IG Carousel slide, dan Medium markdown.</span>
+      </div>
+      <div class="io-col">
+        <strong>Data Output</strong>
+        <span><code>CompiledPlatformPayloads[]</code></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="step-node sched">
+    <div class="node-header">
+      <div class="node-title"><b>05.</b> Scheduling &amp; Dispatch Queue Step</div>
+      <span class="node-type type-queue">Queue &amp; DB Lock</span>
+    </div>
+    <div class="node-body">
+      <div class="io-col">
+        <strong>Input</strong>
+        <span><code>CompiledPlatformPayloads</code></span>
+      </div>
+      <div class="io-col">
+        <strong>Aksi Mastra</strong>
+        <span>Menyimpan payload siap rilis ke DB dengan status <code>SCHEDULED</code> dan mendaftarkan jadwal ke cloud timer untuk rilis otonom 24/7.</span>
+      </div>
+      <div class="io-col">
+        <strong>Eksekusi Rilis</strong>
+        <span>Dipublish tepat waktu ke API Medsos</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <span>Capstone TA &bull; Rafiq Social Media Agent Architecture</span>
+  <span>Mastra Workflow Spec &bull; 2026</span>
+</div>
+
+</body>
+</html>

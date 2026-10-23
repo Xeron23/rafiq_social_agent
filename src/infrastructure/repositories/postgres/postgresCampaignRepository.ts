@@ -1,0 +1,109 @@
+import { pool } from '../../database/db.js';
+import { CampaignAggregate } from '../../../domain/campaign/campaign.aggregate.js';
+import { ICampaignRepository } from '../../../domain/campaign/campaign.repository.js';
+import { CampaignLifecycleStatus, CampaignType, ChannelKey } from '../../../domain/campaign/campaign.types.js';
+
+export class PostgresCampaignRepository implements ICampaignRepository {
+  async save(campaign: CampaignAggregate): Promise<void> {
+    const text = `
+      INSERT INTO campaigns (
+        id, title, campaign_type, brief, status, current_stage,
+        duration_weeks, start_date, target_channels,
+        strategy_data, content_plan_data, canonical_data,
+        platform_variants, custom_captions, updated_at
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW()
+      )
+      ON CONFLICT (id) DO UPDATE SET
+        title = EXCLUDED.title,
+        status = EXCLUDED.status,
+        current_stage = EXCLUDED.current_stage,
+        strategy_data = EXCLUDED.strategy_data,
+        content_plan_data = EXCLUDED.content_plan_data,
+        canonical_data = EXCLUDED.canonical_data,
+        platform_variants = EXCLUDED.platform_variants,
+        custom_captions = EXCLUDED.custom_captions,
+        updated_at = NOW();
+    `;
+
+    const values = [
+      campaign.id,
+      campaign.name,
+      campaign.type,
+      campaign.strategy?.brief || '',
+      campaign.status.toLowerCase(),
+      campaign.step,
+      2, // default duration
+      new Date().toISOString().split('T')[0],
+      JSON.stringify(campaign.targetChannels),
+      campaign.strategy ? JSON.stringify(campaign.strategy) : null,
+      campaign.contentPlan ? JSON.stringify(campaign.contentPlan) : null,
+      campaign.canonicalContent ? JSON.stringify(campaign.canonicalContent) : null,
+      JSON.stringify(campaign.platformVariants || {}),
+      JSON.stringify(campaign.customCaptions || {})
+    ];
+
+    await pool.query(text, values);
+
+    // Save revision history
+    for (const rev of campaign.revisionHistory) {
+      await pool.query(`
+        INSERT INTO campaign_hitl_revisions (campaign_id, stage_number, action, feedback_notes, created_at)
+        VALUES ($1, $2, 'REVISION', $3, $4)
+      `, [campaign.id, rev.stage, rev.feedback, rev.at]);
+    }
+  }
+
+  async findById(id: string): Promise<CampaignAggregate | null> {
+    const res = await pool.query('SELECT * FROM campaigns WHERE id = $1', [id]);
+    if (res.rows.length === 0) return null;
+
+    const row = res.rows[0];
+    return this.mapRowToAggregate(row);
+  }
+
+  async findAll(): Promise<CampaignAggregate[]> {
+    const res = await pool.query('SELECT * FROM campaigns ORDER BY updated_at DESC');
+    return res.rows.map(row => this.mapRowToAggregate(row));
+  }
+
+  async delete(id: string): Promise<boolean> {
+    const res = await pool.query('DELETE FROM campaigns WHERE id = $1', [id]);
+    return (res.rowCount ?? 0) > 0;
+  }
+
+  private mapRowToAggregate(row: any): CampaignAggregate {
+    const defaultVoice = {
+      name: 'Rafiqspace.ai',
+      desc: '',
+      formal: 30,
+      warm: 60,
+      simple: 55,
+      keywords: ['Sovereignty']
+    };
+
+    const targetChannels: ChannelKey[] = Array.isArray(row.target_channels)
+      ? row.target_channels
+      : (typeof row.target_channels === 'string' ? JSON.parse(row.target_channels) : ['li', 'ig']);
+
+    const agg = new CampaignAggregate(
+      row.id,
+      row.title,
+      row.campaign_type as CampaignType,
+      targetChannels,
+      defaultVoice,
+      row.status.toUpperCase() as CampaignLifecycleStatus,
+      row.current_stage,
+      row.strategy_data || undefined,
+      row.content_plan_data || undefined,
+      row.canonical_data || undefined,
+      row.platform_variants || {},
+      row.custom_captions || {},
+      [],
+      new Date(row.created_at),
+      new Date(row.updated_at)
+    );
+
+    return agg;
+  }
+}

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Arsitektur Mastra AI Agent & Pipeline Eksekusi</title>
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 12mm 12mm 12mm 12mm;
+  }
+  body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: #1e293b;
+    background-color: #ffffff;
+    line-height: 1.4;
+    font-size: 10pt;
+    margin: 0;
+    padding: 0;
+  }
+  h1 {
+    color: #0f172a;
+    font-size: 16pt;
+    font-weight: 800;
+    margin-top: 0;
+    margin-bottom: 2px;
+    border-bottom: 2px solid #2563eb;
+    padding-bottom: 4px;
+  }
+  .subtitle {
+    font-size: 9pt;
+    color: #64748b;
+    margin-bottom: 12px;
+    font-weight: 500;
+  }
+  .diagram-box {
+    background: #0b0f19;
+    color: #f1f5f9;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 7.2pt;
+    line-height: 1.2;
+    white-space: pre;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+  h2 {
+    color: #0f172a;
+    font-size: 11pt;
+    font-weight: 700;
+    margin-top: 10px;
+    margin-bottom: 6px;
+    border-left: 3px solid #2563eb;
+    padding-left: 6px;
+  }
+  p {
+    margin-top: 0;
+    margin-bottom: 6px;
+    font-size: 8.5pt;
+    color: #334155;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .card {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    padding: 8px 10px;
+  }
+  .card h3 {
+    margin: 0 0 3px 0;
+    font-size: 9pt;
+    color: #0f172a;
+    font-weight: 700;
+  }
+  .card p {
+    font-size: 8pt;
+    margin: 0;
+    color: #475569;
+    line-height: 1.3;
+  }
+  ul {
+    margin: 0;
+    padding-left: 14px;
+    font-size: 8pt;
+    color: #334155;
+  }
+  li {
+    margin-bottom: 2px;
+  }
+  .step-flow {
+    background: #f1f5f9;
+    border-radius: 5px;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+  }
+  .step-flow ol {
+    margin: 0;
+    padding-left: 16px;
+    font-size: 8pt;
+    color: #1e293b;
+  }
+  .step-flow li {
+    margin-bottom: 4px;
+  }
+  .step-title {
+    font-weight: 700;
+    color: #1d4ed8;
+  }
+  .footer {
+    margin-top: 10px;
+    padding-top: 6px;
+    border-top: 1px solid #e2e8f0;
+    font-size: 7.5pt;
+    color: #94a3b8;
+    text-align: right;
+  }
+</style>
+</head>
+<body>
+
+<h1>Arsitektur Mastra AI Agent: End-to-End Execution Flow</h1>
+<div class="subtitle">Cloud Agentic Ecosystem &bull; Mastra Workflows &amp; Tooling &bull; Canonical Synthesis &bull; Context Isolation</div>
+
+<div class="diagram-box">┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                   FRONTEND / DASHBOARD UI                                       │
+│    - Conversational Campaign Brief Builder         - Interactive Content Plan Matrix Grid       │
+└────────────────────────────────────────────────┬────────────────────────────────────────────────┘
+                                                 │ REST API / WebSocket
+                                                 ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                        BACKEND APPLICATION LAYER (Mastra Agent Runtime)                         │
+│                                                                                                 │
+│  ┌───────────────────────────────────────────────────────────────────────────────────────────┐  │
+│  │                            MASTRA AGENT ORCHESTRATION PIPELINE                            │  │
+│  │                                                                                           │  │
+│  │   [ 1. Ingest Context ] ──► Membaca Company DNA & Project ICP dari Context Store          │  │
+│  │            │                                                                              │  │
+│  │            ▼                                                                              │  │
+│  │   [ 2. Trend Agent ]   ──► Mastra Tool: Social Listening & Web Trend Scraper              │  │
+│  │            │               (Menghasilkan Trend Intelligence & Angle Riset)                │  │
+│  │            ▼                                                                              │  │
+│  │   [ 3. Brief Agent ]   ──► Mastra Step: Mensintesis Campaign Brief Terstruktur            │  │
+│  │            │                                                                              │  │
+│  │            ▼                                                                              │  │
+│  │   [ 4. Matrix Agent ]  ──► Mastra Step: Batch Matrix Generator (5–15 Jadwal Topik)       │  │
+│  │            │                                                                              │  │
+│  │            ▼                                                                              │  │
+│  │   🛑 [ Macro-HITL Gate ] ► Persetujuan 1-Klik / Revisi Conversational oleh User           │  │
+│  │            │ (Approved)                                                                   │  │
+│  │            ▼                                                                              │  │
+│  │   [ 5. Canonical Engine] ► Mastra Workflow: Single Source of Truth Synthesis              │  │
+│  │            │               (Thesis + Multi-Hooks + Core Arguments + Supporting Data)      │  │
+│  │            ▼                                                                              │  │
+│  │   [ 6. Platform Adapters]► Mastra Step: Parallel Deterministic Multi-Platform Compilers   │  │
+│  │            │               (X &le;280 char, LinkedIn, IG Carousel, Medium Long-Form)       │  │
+│  │            ▼                                                                              │  │
+│  │   [ 7. Direct Dispatch] ─► Publikasi / Penjadwalan ke Eksternal API Medsos                │  │
+│  │            │                                                                              │  │
+│  │            ▼                                                                              │  │
+│  │   [ 8. Analytics Loop ] ─► Tarik Metrik & Ingest Insight ke Project Context Store         │  │
+│  └─────────────────────────────────────────────┬─────────────────────────────────────────────┘  │
+│                                                │                                                │
+│                                                ▼                                                │
+│                                  ┌───────────────────────────┐                                  │
+│                                  │    OmniRoute AI Engine    │                                  │
+│                                  │  (LLM Execution & Tools)  │                                  │
+│                                  └───────────────────────────┘                                  │
+└────────────────────────────────────────────────┬────────────────────────────────────────────────┘
+                                                 │
+                                                 ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                 CONTEXT STORAGE ISOLATION (DB)                                  │
+│                                                                                                 │
+│  ┌───────────────────────────────────────────────────────────────────────────────────────────┐  │
+│  │                                COMPANY STORE (Root Tenant)                                │  │
+│  │  - Master Brand DNA, Global Tone of Voice, Ethical Boundaries, Tenant Auth Credentials    │  │
+│  └─────────────────────────────────────────────┬─────────────────────────────────────────────┘  │
+│                                                │ (1 : N) Has Many                               │
+│  ┌─────────────────────────────────────────────▼─────────────────────────────────────────────┐  │
+│  │                                 PROJECT CONTEXT STORE                                     │  │
+│  │  - Target Audience & Refined ICP Description                                              │  │
+│  │  - Defined Content Pillars & Domain Knowledge Base                                        │  │
+│  │  - Historical Campaign Strategy & Closed-Loop Analytics Insights (Feedback Memory)       │  │
+│  └─────────────────────────────────────────────┬─────────────────────────────────────────────┘  │
+│                                                │ (1 : N) Has Many                               │
+│  ┌─────────────────────────────────────────────▼─────────────────────────────────────────────┐  │
+│  │                             APPLICATION WORKER ISOLATION BOUNDARY                         │  │
+│  │  - Worker membaca Project Context secara terisolasi (Anti-Context Bleed)                  │  │
+│  │  - Social OAuth Tokens (X, LinkedIn, IG, Medium)                                          │  │
+│  │  - Active Plan Matrices, Canonical Content Store & Compiled Platform Payloads             │  │
+│  └───────────────────────────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘</div>
+
+<h2>Detail Langkah Alur Kerja Mastra AI Agent (Flow Breakdown)</h2>
+
+<div class="step-flow">
+  <ol>
+    <li>
+      <span class="step-title">Fase 1: Context Ingestion &amp; Trend Tooling</span><br>
+      Worker menginisialisasi agent Mastra dengan konteks terisolasi dari <code>Project Context Store</code> (ICP &amp; Pilar). Mastra memicu <code>TrendListeningTool</code> untuk meriset tren web &amp; medsos terkini secara otonom.
+    </li>
+    <li>
+      <span class="step-title">Fase 2: Campaign Brief &amp; Matrix Formulation</span><br>
+      Mastra mensintesis intent percakapan user dan hasil riset tren menjadi <code>CampaignBrief</code>. Selanjutnya, agent menghasilkan batch <code>ContentPlanMatrix</code> (daftar 5–15 topik, hook awal, target pilar, dan tanggal publikasi).
+    </li>
+    <li>
+      <span class="step-title">Fase 3: Macro Human-in-the-Loop (HITL) Checkpoint</span><br>
+      Pipeline Mastra masuk ke status <i>Suspended / Awaiting Approval</i>. User cukup meninjau matriks tabel di dashboard dan memberikan <b>1-Click Macro Approval</b> (atau request mutasi sudut pandang via chat).
+    </li>
+    <li>
+      <span class="step-title">Fase 4: Canonical Content Engine (Single Source of Truth)</span><br>
+      Setelah disetujui, Mastra menjalankan sintesis <b>Canonical Content</b> (konten mentah berbobot tinggi berisi tesis inti, multi-angle hooks, argumen logis, data pendukung, dan CTA) tanpa batasan format platform.
+    </li>
+    <li>
+      <span class="step-title">Fase 5: Deterministic Multi-Platform Adapters &amp; Distribution</span><br>
+      Mastra secara paralel mentransformasikan Canonical Content ke format tujuan: <b>X</b> (&le;280 karakter), <b>LinkedIn</b> (struktur profesional), <b>Instagram</b> (slide carousel + visual prompt), dan <b>Medium</b> (long-form markdown). Postingan dieksekusi ke API target.
+    </li>
+    <li>
+      <span class="step-title">Fase 6: Closed-Loop Analytics &amp; Self-Improvement</span><br>
+      Mastra menarik metrik performa pasca-rilis, mengevaluasi efektivitas hook, dan menginjeksi insight baru ke <code>Project Context Store</code> untuk kampanye masa depan.
+    </li>
+  </ol>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h3>Prinsip Canonical Content ("Raw Material")</h3>
+    <p>
+      Berperan sebagai fondasi intelektual konten sebelum dibentuk ke wadah media sosial. Mencegah <i>constraint bleed</i> (kebocoran aturan format antar platform) dan menjamin kedalaman substansi tulisan.
+    </p>
+  </div>
+  <div class="card">
+    <h3>Isolasi Worker &amp; Project Context</h3>
+    <p>
+      Application Worker hanya memiliki akses terisolasi ke Project Context miliknya sendiri. Tidak ada data sharing atau percampuran memori antar brand maupun antar project dalam multi-tenant store.
+    </p>
+  </div>
+</div>
+
+<div class="footer">
+  Dokumen Arsitektur Mastra AI Agent &bull; Capstone TA Rafiq Social Media Agent &bull; 2026
+</div>
+
+</body>
+</html>

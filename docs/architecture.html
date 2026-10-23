@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Arsitektur Sistem Rafiq Social Media Agent</title>
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 15mm 15mm 15mm 15mm;
+  }
+  body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: #1e293b;
+    background-color: #ffffff;
+    line-height: 1.45;
+    font-size: 11pt;
+    margin: 0;
+    padding: 0;
+  }
+  h1 {
+    color: #0f172a;
+    font-size: 18pt;
+    font-weight: 800;
+    margin-top: 0;
+    margin-bottom: 4px;
+    border-bottom: 2px solid #3b82f6;
+    padding-bottom: 6px;
+  }
+  .subtitle {
+    font-size: 10pt;
+    color: #64748b;
+    margin-bottom: 16px;
+    font-weight: 500;
+  }
+  .badge-container {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .badge {
+    background: #e0f2fe;
+    color: #0369a1;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 8.5pt;
+    font-weight: 600;
+  }
+  .diagram-box {
+    background: #0f172a;
+    color: #f8fafc;
+    border-radius: 8px;
+    padding: 14px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 8pt;
+    line-height: 1.25;
+    white-space: pre;
+    overflow: hidden;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+  h2 {
+    color: #1e293b;
+    font-size: 12pt;
+    font-weight: 700;
+    margin-top: 14px;
+    margin-bottom: 8px;
+    border-left: 3px solid #3b82f6;
+    padding-left: 8px;
+  }
+  p {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 9.5pt;
+    color: #334155;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  .card h3 {
+    margin: 0 0 4px 0;
+    font-size: 10pt;
+    color: #0f172a;
+    font-weight: 700;
+  }
+  .card p {
+    font-size: 8.5pt;
+    margin: 0;
+    color: #475569;
+    line-height: 1.35;
+  }
+  ul {
+    margin: 0;
+    padding-left: 16px;
+    font-size: 8.5pt;
+    color: #334155;
+  }
+  li {
+    margin-bottom: 3px;
+  }
+  .footer {
+    margin-top: 14px;
+    padding-top: 8px;
+    border-top: 1px solid #e2e8f0;
+    font-size: 8pt;
+    color: #94a3b8;
+    text-align: right;
+  }
+</style>
+</head>
+<body>
+
+<h1>Arsitektur Sistem: Rafiq Social Media Agent</h1>
+<div class="subtitle">Cloud Agentic Ecosystem &bull; Context-Isolated Architecture &bull; Macro-HITL Protocol</div>
+
+<div class="diagram-box">┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│                              FRONTEND / DASHBOARD UI                                    │
+│  - Conversational Campaign Chat Interface                                               │
+│  - Interactive Content Plan Matrix Grid (1-Click Macro Approval)                        │
+└───────────────────────────────────────────┬─────────────────────────────────────────────┘
+                                            │ HTTP / REST API (JSON Schema Verified)
+                                            ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│                               BACKEND APPLICATION LAYER                                 │
+│                                                                                         │
+│  ┌─────────────────────────┐   ┌──────────────────────────┐   ┌──────────────────────┐  │
+│  │   Campaign Controller   │   │  Content Plan Controller │   │ Content Distribution │  │
+│  └────────────┬────────────┘   └────────────┬─────────────┘   └──────────┬───────────┘  │
+│               │                             │                            │              │
+│               ▼                             ▼                            ▼              │
+│  ┌───────────────────────────────────────────────────────────────────────────────────┐  │
+│  │                     APPLICATION WORKER / AGENT RUNTIME CORE                       │  │
+│  │                                                                                   │  │
+│  │  1. Campaign Strategy Service (Brief & Target Formulation)                         │  │
+│  │  2. Autonomous Trend Intelligence Tool (Market & Social Listening)                 │  │
+│  │  3. Content Plan Matrix Service (Batch Generation & Macro-HITL Gate)               │  │
+│  │  4. Canonical Content Engine (Single Source of Truth Synthesis)                   │  │
+│  │  5. Deterministic Multi-Platform Adapters (X, LinkedIn, IG Carousel, Medium)      │  │
+│  │  6. Closed-Loop Analytics Evaluator (Performance Feedback Loop)                   │  │
+│  └──────────────────┬────────────────────────────────────────────────────────────────┘  │
+│                     │                                                                   │
+│                     ▼                                                                   │
+│          ┌───────────────────────┐                                                      │
+│          │  OmniRoute AI Engine  │                                                      │
+│          │  (LLM Prompt Chaining)│                                                      │
+│          └───────────────────────┘                                                      │
+└───────────────────────────────────────────────────────────────┬─────────────────────────┘
+                                                                │
+                                                                ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│                           MULTI-TENANT CONTEXT STORES (DB)                              │
+│                                                                                         │
+│   ┌─────────────────────────────────────────────────────────────────────────────────┐   │
+│   │                         COMPANY STORE (Root Tenant)                             │   │
+│   │   - Company Profile, Master Brand DNA, Global Tone & Boundaries                 │   │
+│   │   - Tenant Auth & Security Credentials                                          │   │
+│   └────────────────────────────────────────┬────────────────────────────────────────┘   │
+│                                            │ (1 : N) Has Many                           │
+│   ┌────────────────────────────────────────▼────────────────────────────────────────┐   │
+│   │                        PROJECT CONTEXT STORE                                    │   │
+│   │   - Target Audience & Refined ICP Description                                   │   │
+│   │   - Defined Content Pillars & Domain Knowledge Base                             │   │
+│   │   - Campaign Strategy History & Closed-Loop Analytics Learnings                 │   │
+│   └────────────────────────────────────────┬────────────────────────────────────────┘   │
+│                                            │ (1 : N) Has Many                           │
+│   ┌────────────────────────────────────────▼────────────────────────────────────────┐   │
+│   │                     APPLICATION WORKER ISOLATION BOUNDARY                       │   │
+│   │   - Social Platform OAuth Tokens (LinkedIn, X, Instagram, Medium API)           │   │
+│   │   - Active Content Plan Matrices (Draft, Approved, Mutated)                     │   │
+│   │   - Canonical Contents & Platform-Compiled Payload Store                        │   │
+│   │   - Direct Publishing Dispatcher & Execution Status Tracker                     │   │
+│   └─────────────────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+                                            │
+                                            ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│                           EXTERNAL TARGET INTEGRATIONS                                  │
+│   - X (Twitter) API   - LinkedIn API   - Instagram Graph API   - Medium API             │
+└─────────────────────────────────────────────────────────────────────────────────────────┘</div>
+
+<h2>Dekonstruksi Komponen Utama & Isolasi Konteks</h2>
+
+<div class="grid">
+  <div class="card">
+    <h3>1. Hierarki Context Store Terisolasi</h3>
+    <ul>
+      <li><b>Company Store:</b> Scope tenant root berisi Brand DNA dan batasan etika/tone perusahaan.</li>
+      <li><b>Project Context Store:</b> Knowledge center per produk (ICP audiens, pilar konten, & insight kampanye lalu).</li>
+      <li><b>Application Store:</b> Scope eksekusi spesifik (kredensial API medsos, matriks jadwal, & payload konten).</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>2. Application Worker & Agent Runtime</h3>
+    <ul>
+      <li><b>Worker Terisolasi:</b> Membaca Project Context secara terproteksi tanpa ada data leakage antar tenant.</li>
+      <li><b>Trend Intelligence:</b> Riset tren pasar otonom sebelum menyusun matriks jadwal.</li>
+      <li><b>Macro-HITL Gate:</b> Persetujuan 1-klik di level tabel matriks rencana konten sebelum penulisan detail.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h3>3. Canonical Engine & Deterministic Adapters</h3>
+    <p>
+      Menghasilkan <i>Canonical Master Content</i> berbobot tinggi tanpa batasan format (Single Source of Truth), lalu dikonversi secara deterministik via skema validasi Zod ke X (&le;280 char), LinkedIn, Instagram Carousel, dan Medium.
+    </p>
+  </div>
+  <div class="card">
+    <h3>4. Closed-Loop Analytics</h3>
+    <p>
+      Menarik data performa metrik pasca-publikasi untuk menghasilkan evaluasi berbasis data yang otomatis diumpankan kembali ke Project Context Store sebagai rekomendasi kampanye berikutnya.
+    </p>
+  </div>
+</div>
+
+<div class="footer">
+  Dokumen Arsitektur Rekayasa Perangkat Lunak &bull; Capstone TA Rafiq Social Media Agent &bull; 2026
+</div>
+
+</body>
+</html>
