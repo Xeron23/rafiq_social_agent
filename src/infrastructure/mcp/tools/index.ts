@@ -212,7 +212,7 @@ export const campaignTools: McpTool[] = [
   },
   {
     name: 'approve_canonical',
-    description: 'Approve or request revision for canonical content (HITL Gate 3).',
+    description: 'Approve or request revision for canonical content (HITL Gate 3). Advance campaign to platform authorization.',
     inputSchema: z.object({
       campaignId: z.string().min(1),
       approved: z.boolean(),
@@ -226,20 +226,16 @@ export const campaignTools: McpTool[] = [
           revisions: z.string().optional(),
         }).parse(args || {});
         const campaignRepo = new PostgresCampaignRepository();
-        const postRepo = new PostgresPostRepository();
-        const memoryRepo = new PostgresMemoryRepository();
-        const brandVoiceStore = new PostgresBrandVoiceStore();
-        const service = new CampaignWorkflowService(campaignRepo, postRepo, memoryRepo, brandVoiceStore);
         const campaign = await campaignRepo.findById(parsed.campaignId);
         if (!campaign) return makeMcpPayload(false, undefined, `Campaign ${parsed.campaignId} not found`);
         if (!parsed.approved && parsed.revisions) {
-          campaign.requestStrategyRevision(parsed.revisions);
+          campaign.requestCanonicalRevision(parsed.revisions);
           await campaignRepo.save(campaign);
-          return makeMcpPayload(true, { campaignId: campaign.id, status: campaign.status, message: 'Canonical revision queued.' });
+          return makeMcpPayload(true, { campaignId: campaign.id, status: campaign.status, message: 'Canonical revision requested.' });
         }
-        campaign.approveStrategy();
+        campaign.approveCanonical();
         await campaignRepo.save(campaign);
-        return makeMcpPayload(true, { campaignId: campaign.id, status: campaign.status, message: 'Canonical approved.' });
+        return makeMcpPayload(true, { campaignId: campaign.id, status: campaign.status, step: campaign.step, message: 'Canonical approved. Ready for final authorization.' });
       } catch (err: any) {
         mcpLogError('approve_canonical', err, 'Failed to approve canonical');
         return makeMcpPayload(false, undefined, err?.message || 'Failed to approve canonical');
@@ -429,7 +425,7 @@ export const brandvoiceTools: McpTool[] = [
     execute: async (_args: any) => {
       try {
         const store = new PostgresBrandVoiceStore();
-        const profile = store.getProfile();
+        const profile = await store.getProfileAsync();
         return makeMcpPayload(true, { profile });
       } catch (err: any) {
         mcpLogError('get_brand_voice', err, 'Failed to read brand voice profile');

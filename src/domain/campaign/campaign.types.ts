@@ -35,6 +35,7 @@ export interface BrandVoiceProfileVO {
 
 export interface IBrandVoiceStore {
   getProfile(): BrandVoiceProfileVO;
+  getProfileAsync?(): Promise<BrandVoiceProfileVO>;
   updateProfile(profile: Partial<BrandVoiceProfileVO>): BrandVoiceProfileVO;
 }
 
@@ -49,13 +50,20 @@ export interface StrategyVO {
   freq: string;
 }
 
+export type PlatformVariantsVO = Record<ChannelKey, string>;
+
 export interface ContentPlanItemVO {
   id: string;
   d: string;        // Date label, e.g. "Sen, 19 Okt"
+  dayOfMonth?: number; // Parsed day of month (1..31)
+  timeStr?: string; // Optimal posting time, e.g. "08.00"
   topic: string;    // Topic title
   fmt: string;      // Format, e.g. "Single image" | "Carousel" | "Quote card"
   master?: boolean; // Highlighted flagship post
   status?: 'pending' | 'approved';
+  caption?: string; // Generated narrative copy for this specific item
+  headline?: string;
+  platformVariants?: Partial<PlatformVariantsVO>; // Per-platform adapted variants for this item
 }
 
 export interface ContentPlanWeekVO {
@@ -77,8 +85,6 @@ export interface CanonicalContentVO {
   };
 }
 
-export type PlatformVariantsVO = Record<ChannelKey, string>;
-
 export const PersonaSchema = z.object({
   i: z.string(),
   n: z.string(),
@@ -98,9 +104,14 @@ export const StrategySchema = z.object({
 
 export const ContentPlanItemSchema = z.object({
   d: z.string(),
+  dayOfMonth: z.number().int().min(1).max(31).optional(),
+  timeStr: z.string().optional(),
   topic: z.string(),
   fmt: z.string(),
   master: z.boolean().optional(),
+  caption: z.string().optional(),
+  headline: z.string().optional(),
+  platformVariants: z.record(z.string(), z.string()).optional(),
 });
 
 export const ContentPlanWeekSchema = z.object({

@@ -33,7 +33,7 @@ export class PostgresCampaignRepository implements ICampaignRepository {
       campaign.strategy?.brief || '',
       campaign.status.toLowerCase(),
       campaign.step,
-      2, // default duration
+      campaign.contentPlan?.length || 2,
       new Date().toISOString().split('T')[0],
       JSON.stringify(campaign.targetChannels),
       campaign.strategy ? JSON.stringify(campaign.strategy) : null,
@@ -45,12 +45,15 @@ export class PostgresCampaignRepository implements ICampaignRepository {
 
     await pool.query(text, values);
 
-    // Save revision history
-    for (const rev of campaign.revisionHistory) {
-      await pool.query(`
-        INSERT INTO campaign_hitl_revisions (campaign_id, stage_number, action, feedback_notes, created_at)
-        VALUES ($1, $2, 'REVISION', $3, $4)
-      `, [campaign.id, rev.stage, rev.feedback, rev.at]);
+    // Save revision history idempotently (avoid duplicates on multiple saves)
+    if (campaign.revisionHistory.length > 0) {
+      await pool.query('DELETE FROM campaign_hitl_revisions WHERE campaign_id = $1', [campaign.id]);
+      for (const rev of campaign.revisionHistory) {
+        await pool.query(`
+          INSERT INTO campaign_hitl_revisions (campaign_id, stage_number, action, feedback_notes, created_at)
+          VALUES ($1, $2, 'REVISION', $3, $4)
+        `, [campaign.id, rev.stage, rev.feedback, rev.at]);
+      }
     }
   }
 
@@ -59,12 +62,21 @@ export class PostgresCampaignRepository implements ICampaignRepository {
     if (res.rows.length === 0) return null;
 
     const row = res.rows[0];
-    return this.mapRowToAggregate(row);
+    const revRes = await pool.query(
+      'SELECT stage_number, feedback_notes, created_at FROM campaign_hitl_revisions WHERE campaign_id = $1 ORDER BY created_at ASC',
+      [id]
+    );
+    const revisions = revRes.rows.map(r => ({
+      stage: r.stage_number,
+      feedback: r.feedback_notes || '',
+      at: new Date(r.created_at),
+    }));
+    return this.mapRowToAggregate(row, revisions);
   }
 
   async findAll(): Promise<CampaignAggregate[]> {
     const res = await pool.query('SELECT * FROM campaigns ORDER BY updated_at DESC');
-    return res.rows.map(row => this.mapRowToAggregate(row));
+    return res.rows.map(row => this.mapRowToAggregate(row, []));
   }
 
   async delete(id: string): Promise<boolean> {
@@ -72,7 +84,10 @@ export class PostgresCampaignRepository implements ICampaignRepository {
     return (res.rowCount ?? 0) > 0;
   }
 
-  private mapRowToAggregate(row: any): CampaignAggregate {
+  private mapRowToAggregate(
+    row: any,
+    revisions: Array<{ stage: number; feedback: string; at: Date }> = []
+  ): CampaignAggregate {
     const defaultVoice = {
       name: 'Rafiqspace.ai',
       desc: '',
@@ -99,7 +114,7 @@ export class PostgresCampaignRepository implements ICampaignRepository {
       row.canonical_data || undefined,
       row.platform_variants || {},
       row.custom_captions || {},
-      [],
+      revisions,
       new Date(row.created_at),
       new Date(row.updated_at)
     );

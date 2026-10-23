@@ -16,6 +16,7 @@ export interface PostItemDTO {
   when?: string;
   campaign?: string;
   st?: number;
+  platformVariants?: Partial<Record<ChannelKey, string>>;
 }
 
 export class PostAggregate {
@@ -33,7 +34,8 @@ export class PostAggregate {
     public whenStr?: string,
     public campaignId?: string,
     public campaignName?: string,
-    public stageNumber: number = 4
+    public stageNumber: number = 4,
+    public platformVariants?: Partial<Record<ChannelKey, string>>
   ) {}
 
   public publishInstant(): void {
@@ -63,6 +65,7 @@ export class PostAggregate {
       when: this.whenStr,
       campaign: this.campaignName || this.campaignId,
       st: this.stageNumber,
+      platformVariants: this.platformVariants,
     };
   }
 }

@@ -33,13 +33,112 @@ export interface NotificationPreferenceDTO {
 export class PostgresAuxiliaryService {
   // --- CALENDAR EVENTS ---
   async getCalendarEvents(month?: number, year?: number): Promise<CalendarEventDTO[]> {
+    const conditions: string[] = [];
+    const params: any[] = [];
+    if (month && month >= 1 && month <= 12) {
+      params.push(month);
+      conditions.push(`EXTRACT(MONTH FROM event_date)::int = $${params.length}`);
+    }
+    if (year && year >= 2000 && year <= 2100) {
+      params.push(year);
+      conditions.push(`EXTRACT(YEAR FROM event_date)::int = $${params.length}`);
+    }
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const res = await pool.query(`
       SELECT id, event_date, EXTRACT(DAY FROM event_date)::int as day_of_month,
              title, short_label, category, suggested_content_type
       FROM calendar_events
+      ${whereClause}
       ORDER BY event_date ASC
-    `);
+    `, params);
     return res.rows;
+  }
+
+  // --- PERFORMANCE METRICS AGGREGATION (STAGE 5 REAL DB COMPUTATION) ---
+  async getAggregatedMetrics(): Promise<{
+    totalViews: number;
+    totalLikes: number;
+    totalShares: number;
+    formattedViews: string;
+    formattedLikes: string;
+    formattedShares: string;
+    channelBreakdown: Record<string, { views: number; likes: number; shares: number }>;
+    topPostsSummary: string;
+  }> {
+    const sumRes = await pool.query(`
+      SELECT
+        COALESCE(SUM(views_count), 0)::int as total_views,
+        COALESCE(SUM(likes_count), 0)::int as total_likes,
+        COALESCE(SUM(shares_count), 0)::int as total_shares
+      FROM post_performance_metrics
+    `);
+    const totalViews = sumRes.rows[0]?.total_views || 0;
+    const totalLikes = sumRes.rows[0]?.total_likes || 0;
+    const totalShares = sumRes.rows[0]?.total_shares || 0;
+
+    const chRes = await pool.query(`
+      SELECT channel_key,
+             COALESCE(SUM(views_count), 0)::int as views,
+             COALESCE(SUM(likes_count), 0)::int as likes,
+             COALESCE(SUM(shares_count), 0)::int as shares
+      FROM post_performance_metrics
+      GROUP BY channel_key
+    `);
+    const channelBreakdown: Record<string, { views: number; likes: number; shares: number }> = {};
+    for (const r of chRes.rows) {
+      channelBreakdown[r.channel_key] = { views: r.views, likes: r.likes, shares: r.shares };
+    }
+
+    const topRes = await pool.query(`
+      SELECT sp.title, sp.format_badge, sp.scheduled_time,
+             SUM(pm.views_count)::int as views,
+             SUM(pm.likes_count)::int as likes,
+             SUM(pm.shares_count)::int as shares
+      FROM post_performance_metrics pm
+      JOIN scheduled_posts sp ON sp.id = pm.post_id
+      GROUP BY sp.id, sp.title, sp.format_badge, sp.scheduled_time
+      ORDER BY views DESC
+      LIMIT 5
+    `);
+
+    const topPostsSummary = topRes.rows.length > 0
+      ? topRes.rows.map((r, idx) => `${idx + 1}. "${r.title}" (${r.format_badge}, jam ${r.scheduled_time}) -> ${r.views} views, ${r.likes} likes, ${r.shares} shares`).join('\n')
+      : 'Belum ada postingan yang memiliki metrik tercatat.';
+
+    const fmtNum = (n: number): string => {
+      if (n >= 1000) {
+        return (n / 1000).toFixed(1).replace('.', ',') + ' rb';
+      }
+      return n.toLocaleString('id-ID');
+    };
+
+    return {
+      totalViews,
+      totalLikes,
+      totalShares,
+      formattedViews: fmtNum(totalViews),
+      formattedLikes: totalLikes.toLocaleString('id-ID'),
+      formattedShares: totalShares.toLocaleString('id-ID'),
+      channelBreakdown,
+      topPostsSummary,
+    };
+  }
+
+  async recordSimulatedMetricsForPost(postId: number, channels: string[]): Promise<void> {
+    const check = await pool.query('SELECT COUNT(*) FROM post_performance_metrics WHERE post_id = $1', [postId]);
+    if (parseInt(check.rows[0].count, 10) > 0) return;
+    const baseSeed = postId * 149;
+    for (let i = 0; i < channels.length; i++) {
+      const ch = channels[i];
+      const mult = ch === 'li' ? 1.8 : ch === 'ig' ? 1.4 : ch === 'x' ? 1.1 : 0.9;
+      const views = Math.round(((baseSeed % 800) + 1100 + i * 250) * mult);
+      const likes = Math.round(views * 0.05);
+      const shares = Math.round(views * 0.01);
+      await pool.query(
+        'INSERT INTO post_performance_metrics (post_id, channel_key, views_count, likes_count, shares_count) VALUES ($1, $2, $3, $4, $5)',
+        [postId, ch, views, likes, shares]
+      );
+    }
   }
 
   // --- NOTIFICATIONS ---

@@ -9,9 +9,9 @@ export class PostgresPostRepository implements IPostRepository {
         id, day_of_month, scheduled_time, title, short_title,
         content_type, status, channels, caption, stage_label,
         campaign_id, campaign_name, when_str, stage_number,
-        updated_at
+        platform_variants, updated_at
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW()
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW()
       )
       ON CONFLICT (id) DO UPDATE SET
         day_of_month = EXCLUDED.day_of_month,
@@ -27,6 +27,7 @@ export class PostgresPostRepository implements IPostRepository {
         campaign_name = EXCLUDED.campaign_name,
         when_str = EXCLUDED.when_str,
         stage_number = EXCLUDED.stage_number,
+        platform_variants = EXCLUDED.platform_variants,
         updated_at = NOW();
     `;
 
@@ -44,7 +45,8 @@ export class PostgresPostRepository implements IPostRepository {
       post.campaignId || null,
       post.campaignName || null,
       post.whenStr || null,
-      post.stageNumber || 4
+      post.stageNumber || 4,
+      JSON.stringify(post.platformVariants || {})
     ];
 
     await pool.query(text, values);
@@ -72,6 +74,10 @@ export class PostgresPostRepository implements IPostRepository {
       ? row.channels
       : (typeof row.channels === 'string' ? JSON.parse(row.channels) : ['li']);
 
+    const platformVariants = typeof row.platform_variants === 'object' && row.platform_variants !== null
+      ? row.platform_variants
+      : (typeof row.platform_variants === 'string' ? JSON.parse(row.platform_variants) : {});
+
     return new PostAggregate(
       row.id,
       row.day_of_month,
@@ -86,7 +92,8 @@ export class PostgresPostRepository implements IPostRepository {
       row.when_str || undefined,
       row.campaign_id || undefined,
       row.campaign_name || undefined,
-      row.stage_number || 4
+      row.stage_number || 4,
+      platformVariants
     );
   }
 }

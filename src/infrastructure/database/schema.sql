@@ -87,8 +87,11 @@ CREATE TABLE IF NOT EXISTS scheduled_posts (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     campaign_name VARCHAR(255),
     stage_number INT DEFAULT 4,
-    when_str VARCHAR(100)
+    when_str VARCHAR(100),
+    platform_variants JSONB DEFAULT '{}'::jsonb
 );
+
+ALTER TABLE scheduled_posts ADD COLUMN IF NOT EXISTS platform_variants JSONB DEFAULT '{}'::jsonb;
 
 -- 5. NOTIFICATIONS & PREFERENCES
 CREATE TABLE IF NOT EXISTS notifications (

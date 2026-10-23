@@ -40,10 +40,10 @@ Output HARUS berupa JSON valid tanpa markdown formatting dengan struktur:
     canonical: CanonicalContentVO;
     targetChannels: ChannelKey[];
   }): Promise<PlatformVariantsVO> {
-    const prompt = `Adaptasikan Konten Master berikut secara ringkas dan padat ke tiap platform:
+    const prompt = `Adaptasikan Konten Master berikut secara utuh dan presisi ke tiap platform:
 Headline: ${params.canonical.headline}
 Sub-headline: ${params.canonical.sub}
-Master Caption: ${params.canonical.caption.slice(0, 500)}
+Master Caption (Utuh): ${params.canonical.caption}
 Tags: ${params.canonical.tags}
 
 Saluran target: ${params.targetChannels.join(', ')}

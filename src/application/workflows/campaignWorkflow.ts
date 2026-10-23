@@ -8,6 +8,7 @@ import {
   StrategyVO,
   ContentPlanWeekVO,
   ContentPlanItemVO,
+  ChannelKey,
 } from '../../domain/campaign/campaign.types.js';
 
 const strategyAgent = new StrategyAgent();
@@ -120,6 +121,7 @@ export const synthesisStep = createStep({
       return {
         canonical: inputData?.canonical,
         platformVariants: inputData?.platformVariants,
+        contentPlan,
         authorized: true,
         customCaptions: resumeData.customCaptions || {},
         scheduleMode: resumeData.scheduleMode || 'planner',
@@ -135,6 +137,8 @@ export const synthesisStep = createStep({
       simple: 55,
       keywords: ['Responsible AI', 'Enterprise Grade', 'Kedaulatan Data', 'Sovereignty'],
     };
+
+    const targetChannels = initData?.targetChannels || inputData?.targetChannels || ['li', 'ig', 'fb', 'th', 'x', 'md'];
 
     // Find the master post from the plan
     let masterItem: ContentPlanItemVO | undefined = contentPlan
@@ -155,28 +159,64 @@ export const synthesisStep = createStep({
       };
     }
 
-    // 1. Synthesize Canonical Content (Single Source of Truth)
+    // 1. Synthesize Canonical Content for the Master Item
     const canonical = await canonicalAgent.generate({
       strategy,
       masterItem,
       brandVoice,
     });
 
-    // 2. Parallel Multi-Platform Adaptation
-    const targetChannels = initData?.targetChannels || inputData?.targetChannels || ['li', 'ig', 'fb', 'th', 'x', 'md'];
+    // 2. Multi-Platform Adaptation for Master Item
     const platformVariants = await platformAdapterAgent.adapt({
       canonical,
       targetChannels,
     });
 
+    // 3. Synthesize individual narrative & platform variants for ALL other plan items
+    // so no scheduled post is left with only a raw topic title
+    const enrichedPlan: ContentPlanWeekVO[] = [];
+    if (contentPlan && Array.isArray(contentPlan)) {
+      for (const week of contentPlan) {
+        const enrichedItems: ContentPlanItemVO[] = [];
+        for (const item of week.items) {
+          if (item.id === masterItem.id || item.master) {
+            enrichedItems.push({
+              ...item,
+              headline: canonical.headline,
+              caption: canonical.caption,
+              platformVariants,
+            });
+          } else {
+            const itemCaption = `${item.topic}.\n\nBagian dari kampanye ${strategy?.name || 'Rafiqspace.ai'}: ${strategy?.goal || ''}.\n\n${canonical.tags}`;
+            const itemVariants: Partial<Record<ChannelKey, string>> = {
+              li: `${item.topic}\n\n${itemCaption}\n\nDiskusi: Bagaimana organisasi Anda menyikapi hal ini?`,
+              ig: `${item.topic}\n\n${itemCaption}`,
+              fb: `${item.topic} — Bagikan kepada rekan kerja Anda jika bermanfaat.`,
+              th: (item.topic + '\n\n' + (strategy?.messages?.[0] || '')).slice(0, 480),
+              x: (item.topic + ' ' + (canonical.tags.split(' ')[0] || '#AI')).slice(0, 275),
+              md: `# ${item.topic}\n\n${itemCaption}`,
+            };
+            enrichedItems.push({
+              ...item,
+              headline: item.topic,
+              caption: itemCaption,
+              platformVariants: itemVariants,
+            });
+          }
+        }
+        enrichedPlan.push({ ...week, items: enrichedItems });
+      }
+    }
+
     // Suspend to wait for HITL Gate 3 & 4 (Review per platform & final authorization)
     return suspend({
       canonical,
       platformVariants,
+      contentPlan: enrichedPlan.length > 0 ? enrichedPlan : contentPlan,
       masterItem,
       strategy,
       awaitingHitl: true,
-      message: 'Sintesis materi dan adaptasi multi-platform selesai. Menunggu otorisasi final pengguna.',
+      message: 'Sintesis materi dan adaptasi multi-platform selesai untuk seluruh kalender. Menunggu otorisasi final pengguna.',
     });
   },
 });

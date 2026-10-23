@@ -13,6 +13,7 @@ import {
   ChannelKey,
   StrategyVO,
   ContentPlanWeekVO,
+  ContentPlanItemVO,
   CanonicalContentVO,
   PlatformVariantsVO,
   IBrandVoiceStore,
@@ -237,14 +238,50 @@ export class CampaignWorkflowService {
         brandVoice,
       });
 
+      const targetChannels = campaign.targetChannels;
       const platformVariants = await this.platformAdapterAgent.adapt({
         canonical,
-        targetChannels: campaign.targetChannels,
+        targetChannels,
       });
 
-      campaign.setSynthesisCompleted(canonical, platformVariants);
+      // Enrich all items in plan with proper narrative and variants
+      const enrichedPlan: ContentPlanWeekVO[] = [];
+      if (campaign.contentPlan && Array.isArray(campaign.contentPlan)) {
+        for (const week of campaign.contentPlan) {
+          const enrichedItems: ContentPlanItemVO[] = [];
+          for (const item of week.items) {
+            if (item.id === masterItem.id || item.master) {
+              enrichedItems.push({
+                ...item,
+                headline: canonical.headline,
+                caption: canonical.caption,
+                platformVariants,
+              });
+            } else {
+              const itemCaption = `${item.topic}.\n\nBagian dari kampanye ${campaign.strategy?.name || 'Rafiqspace.ai'}: ${campaign.strategy?.goal || ''}.\n\n${canonical.tags}`;
+              const itemVariants: Partial<Record<ChannelKey, string>> = {
+                li: `${item.topic}\n\n${itemCaption}\n\nDiskusi: Bagaimana organisasi Anda menyikapi hal ini?`,
+                ig: `${item.topic}\n\n${itemCaption}`,
+                fb: `${item.topic} — Bagikan kepada rekan kerja Anda jika bermanfaat.`,
+                th: (item.topic + '\n\n' + (campaign.strategy?.messages?.[0] || '')).slice(0, 480),
+                x: (item.topic + ' ' + (canonical.tags.split(' ')[0] || '#AI')).slice(0, 275),
+                md: `# ${item.topic}\n\n${itemCaption}`,
+              };
+              enrichedItems.push({
+                ...item,
+                headline: item.topic,
+                caption: itemCaption,
+                platformVariants: itemVariants,
+              });
+            }
+          }
+          enrichedPlan.push({ ...week, items: enrichedItems });
+        }
+      }
+
+      campaign.setSynthesisCompleted(canonical, platformVariants, enrichedPlan.length > 0 ? enrichedPlan : undefined);
       await this.campaignRepo.save(campaign);
-      return { campaign, stepResult: { canonical, platformVariants } };
+      return { campaign, stepResult: { canonical, platformVariants, contentPlan: campaign.contentPlan } };
     }
 
     if (!action.approved && action.revisions) {
@@ -284,7 +321,8 @@ export class CampaignWorkflowService {
     if (synthesisData.canonical && synthesisData.platformVariants) {
       campaign.setSynthesisCompleted(
         synthesisData.canonical as CanonicalContentVO,
-        synthesisData.platformVariants as PlatformVariantsVO
+        synthesisData.platformVariants as PlatformVariantsVO,
+        synthesisData.contentPlan as ContentPlanWeekVO[] | undefined
       );
       await this.campaignRepo.save(campaign);
     }
@@ -335,7 +373,7 @@ export class CampaignWorkflowService {
     const scheduledPosts: PostAggregate[] = [];
     const activeChannels = campaign.targetChannels;
 
-    // Convert plan items into calendar post aggregates
+    // Convert plan items into calendar post aggregates with resolved dates & times
     if (campaign.contentPlan) {
       const typeLabelMap: Record<string, string> = {
         hb: 'Konten Hari Besar',
@@ -343,30 +381,49 @@ export class CampaignWorkflowService {
         pp: 'Promosi Produk',
       };
       const contentType = typeLabelMap[campaign.type] || 'Leadership Thought';
-      let dayCounter = 20; // Default schedule start
+      let autoDayCounter = new Date().getDate();
+
       for (const week of campaign.contentPlan) {
         for (const item of week.items) {
           const isMaster = !!item.master;
           const status = scheduleMode === 'instant' && isMaster ? 'terbit' : 'terjadwal';
           const stage = isMaster ? 'Postingan Utama' : 'Terjadwal di Kalender';
-          const caption = isMaster
+
+          autoDayCounter = ((autoDayCounter + 1) % 30) + 1;
+          const resolvedDay = item.dayOfMonth || (item.d ? (parseInt(item.d.match(/\b(\d{1,2})\b/)?.[1] || '0', 10) || autoDayCounter) : autoDayCounter);
+          const resolvedTime = item.timeStr || (isMaster ? '07.30' : '08.30');
+
+          // Assemble platform variants map
+          const postPlatformVariants: Partial<Record<ChannelKey, string>> = {
+            ...(item.platformVariants || {}),
+          };
+
+          if (isMaster) {
+            for (const ch of activeChannels) {
+              postPlatformVariants[ch] = campaign.customCaptions[ch] || campaign.platformVariants[ch] || postPlatformVariants[ch] || campaign.canonicalContent?.caption || item.topic;
+            }
+          }
+
+          const primaryCaption = isMaster
             ? (campaign.customCaptions['li'] || campaign.platformVariants['li'] || campaign.canonicalContent?.caption || item.topic)
-            : item.topic;
+            : (item.caption || postPlatformVariants['li'] || item.topic);
 
           const post = new PostAggregate(
             nextId++,
-            dayCounter++,
-            '10.00',
+            resolvedDay,
+            resolvedTime,
             item.topic,
             item.topic.length > 30 ? item.topic.slice(0, 27) + '...' : item.topic,
             contentType,
             status,
             activeChannels,
-            caption,
+            primaryCaption,
             stage,
-            `${item.d} · 10.00`,
+            `${item.d || 'Hari ' + resolvedDay} · ${resolvedTime}`,
             campaign.id,
-            campaign.strategy?.name || campaign.name
+            campaign.strategy?.name || campaign.name,
+            4,
+            postPlatformVariants
           );
           scheduledPosts.push(post);
         }

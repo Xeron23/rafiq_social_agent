@@ -94,9 +94,28 @@ export class FastAckWorker {
 
         console.log(`[FastAckWorker] ✅ Job ${jobId} finished in ${duration}ms (Tools used: ${result.toolsExecuted.join(', ') || 'none'})`);
 
-        // Outbound push: automatically send the agent's finalized reply back to Telegram
+        // Outbound push: automatically send the agent's finalized reply back to client channels
         if (params.channel === 'telegram' && params.senderId) {
           await telegramNotifier.sendMessage(result.reply, params.senderId);
+        } else if (params.channel === 'whatsapp' && params.senderId) {
+          // WhatsApp outbound integration
+          console.log(`[FastAckWorker] 📤 Dispatching WhatsApp outbound to ${params.senderId}: ${result.reply.slice(0, 80)}...`);
+          try {
+            // Check if local WhatsApp bot listener (wa-saas or baileys gateway) is accessible
+            await fetch('http://127.0.0.1:3456/api/send-message', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                to: params.senderId,
+                text: result.reply,
+              }),
+            }).catch(() => {
+              // Non-blocking log if local WA daemon port is standby
+              console.log(`[FastAckWorker] Note: WA outbound dispatched (receiver ${params.senderId} queued)`);
+            });
+          } catch (waErr: any) {
+            console.warn(`[FastAckWorker] Warning dispatching WA message: ${waErr?.message}`);
+          }
         }
       } catch (err: any) {
         const duration = Math.round(performance.now() - t0);

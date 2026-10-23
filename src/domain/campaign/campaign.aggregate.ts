@@ -71,7 +71,7 @@ export class CampaignAggregate {
   }
 
   public approveStrategy(feedback?: string): void {
-    if (this.status !== 'STRATEGY_AWAITING_HITL') {
+    if (this.status !== 'STRATEGY_AWAITING_HITL' && this.status !== 'STRATEGY_APPROVED') {
       throw new Error(`Cannot approve strategy when status is ${this.status}`);
     }
     this.status = 'STRATEGY_APPROVED';
@@ -91,8 +91,8 @@ export class CampaignAggregate {
 
   // --- TAHAP 2: CONTENT PLANNING MATRIX (HITL GATE 2) ---
   public setContentPlanGenerated(weeks: ContentPlanWeekVO[]): void {
-    if (this.status !== 'STRATEGY_APPROVED') {
-      throw new Error('Strategy must be approved before planning content');
+    if (this.status !== 'STRATEGY_APPROVED' && this.status !== 'PLAN_GENERATING' && this.status !== 'PLAN_AWAITING_HITL') {
+      throw new Error(`Strategy must be approved before planning content (current status: ${this.status})`);
     }
     this.contentPlan = weeks;
     this.status = 'PLAN_AWAITING_HITL';
@@ -102,7 +102,7 @@ export class CampaignAggregate {
   }
 
   public approveContentPlan(feedback?: string): void {
-    if (this.status !== 'PLAN_AWAITING_HITL') {
+    if (this.status !== 'PLAN_AWAITING_HITL' && this.status !== 'PLAN_APPROVED') {
       throw new Error(`Cannot approve content plan when status is ${this.status}`);
     }
     this.status = 'PLAN_APPROVED';
@@ -123,17 +123,39 @@ export class CampaignAggregate {
   // --- TAHAP 3 & 4: CANONICAL CONTENT & PLATFORM VARIANTS (HITL GATE 3 & 4) ---
   public setSynthesisCompleted(
     canonical: CanonicalContentVO,
-    variants: PlatformVariantsVO
+    variants: PlatformVariantsVO,
+    updatedContentPlan?: ContentPlanWeekVO[]
   ): void {
-    if (this.status !== 'PLAN_APPROVED') {
-      throw new Error('Content plan must be approved before synthesis');
+    if (this.status !== 'PLAN_APPROVED' && this.status !== 'SYNTHESIS_GENERATING' && this.status !== 'SYNTHESIS_AWAITING_HITL') {
+      throw new Error(`Content plan must be approved before synthesis (current status: ${this.status})`);
     }
     this.canonicalContent = canonical;
     this.platformVariants = variants;
+    if (updatedContentPlan) {
+      this.contentPlan = updatedContentPlan;
+    }
     this.status = 'SYNTHESIS_AWAITING_HITL';
     this.step = 3;
     this.updatedAt = new Date();
     this.recordEvent(new SynthesisCompletedEvent(this.id));
+  }
+
+  public approveCanonical(feedback?: string): void {
+    if (this.status !== 'SYNTHESIS_AWAITING_HITL' && this.status !== 'AUTHORIZED') {
+      throw new Error(`Cannot approve canonical content when status is ${this.status}`);
+    }
+    this.status = 'SYNTHESIS_AWAITING_HITL';
+    this.step = 4;
+    this.updatedAt = new Date();
+    if (feedback) {
+      this.revisionHistory.push({ stage: 3, feedback, at: new Date() });
+    }
+  }
+
+  public requestCanonicalRevision(feedback: string): void {
+    this.revisionHistory.push({ stage: 3, feedback, at: new Date() });
+    this.status = 'SYNTHESIS_GENERATING';
+    this.updatedAt = new Date();
   }
 
   public updatePlatformCopy(channel: ChannelKey, newCopy: string): void {
@@ -142,7 +164,7 @@ export class CampaignAggregate {
   }
 
   public authorize(scheduleMode: 'planner' | 'instant'): void {
-    if (this.status !== 'SYNTHESIS_AWAITING_HITL') {
+    if (this.status !== 'SYNTHESIS_AWAITING_HITL' && this.status !== 'AUTHORIZED') {
       throw new Error(`Cannot authorize campaign when status is ${this.status}`);
     }
     this.status = 'AUTHORIZED';

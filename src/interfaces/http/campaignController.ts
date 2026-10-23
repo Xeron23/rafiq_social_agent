@@ -345,15 +345,22 @@ export function createHttpRouter(
       const posts = await postRepo.findAll();
       const memories = await memoryRepo.findAll();
       const recs = await auxiliary.getRecommendations();
+      const metrics = await auxiliary.getAggregatedMetrics();
 
       res.json({
         success: true,
         kpis: {
-          views: '48,2 rb',
-          likes: '2.140',
-          shares: '386',
+          views: metrics.formattedViews,
+          likes: metrics.formattedLikes,
+          shares: metrics.formattedShares,
           publishedCount: posts.filter(p => p.status === 'terbit').length,
           scheduledCount: posts.filter(p => p.status === 'terjadwal').length,
+        },
+        rawMetrics: {
+          totalViews: metrics.totalViews,
+          totalLikes: metrics.totalLikes,
+          totalShares: metrics.totalShares,
+          channelBreakdown: metrics.channelBreakdown,
         },
         memories: memories.map(m => m.toDTO()),
         recommendations: recs,
@@ -386,9 +393,14 @@ export function createHttpRouter(
   router.post('/analytics/learn', async (req: Request, res: Response) => {
     try {
       const { postsSummary, kpiStats } = req.body;
+      const metrics = await auxiliary.getAggregatedMetrics();
+
+      const resolvedPostsSummary = postsSummary || metrics.topPostsSummary;
+      const resolvedKpiStats = kpiStats || `Total Views: ${metrics.formattedViews}, Total Likes: ${metrics.formattedLikes}, Total Shares: ${metrics.formattedShares}`;
+
       const reflections = await analyticsLearner.analyzeAndReflect({
-        recentPostsSummary: postsSummary || 'Postingan carousel teknis mencapai impresi 9.4rb di LinkedIn.',
-        kpiStats: kpiStats || 'Views: 48.2rb (+18%), Likes: 2.140 (+11%), Shares: 386 (+24%).',
+        recentPostsSummary: resolvedPostsSummary,
+        kpiStats: resolvedKpiStats,
       });
 
       for (const r of reflections) {
