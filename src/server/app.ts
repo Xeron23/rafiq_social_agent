@@ -21,15 +21,6 @@ import { FastAckWorker } from '../application/services/fastAckWorker.js';
 import { ChatOrchestratorAgent } from '../infrastructure/mastra/agents/chatOrchestratorAgent.js';
 import { telegramNotifier } from '../infrastructure/telegram/telegramNotificationService.js';
 
-// Legacy Services (Kept for backwards compatibility)
-import { TenancyManager } from '../services/tenancyService.js';
-import { CampaignStrategyService } from '../services/campaignStrategyService.js';
-import { ContentPlanService } from '../services/contentPlanService.js';
-import { CanonicalContentEngine } from '../services/canonicalContentService.js';
-import { MultiPlatformAdapterEngine } from '../adapters/multiPlatformAdapters.js';
-import { PublishingSchedulerService, ClosedLoopAnalyticsService } from '../services/publishingAndAnalyticsService.js';
-import { ChatOrchestratorService } from '../services/chatOrchestratorService.js';
-
 export function createServerApp() {
   const app = express();
   app.use(cors());
@@ -139,23 +130,6 @@ export function createServerApp() {
   const fastAckWorker = new FastAckWorker(chatOrchestratorAgent);
   const webhookRouter = createWebhookRouter(fastAckWorker, chatOrchestratorAgent);
   app.use('/api', webhookRouter);
-  const tenancyManager = new TenancyManager();
-  const campaignStrategyService = new CampaignStrategyService();
-  const contentPlanService = new ContentPlanService();
-  const canonicalContentEngine = new CanonicalContentEngine();
-  const multiPlatformAdapterEngine = new MultiPlatformAdapterEngine();
-  const publishingSchedulerService = new PublishingSchedulerService();
-  const closedLoopAnalyticsService = new ClosedLoopAnalyticsService();
-
-  const chatOrchestratorService = new ChatOrchestratorService(
-    tenancyManager,
-    campaignStrategyService,
-    contentPlanService,
-    canonicalContentEngine,
-    multiPlatformAdapterEngine,
-    publishingSchedulerService,
-    closedLoopAnalyticsService
-  );
 
   // ── Proactive Outbound Test Route ──────────────────────────────────
   app.post('/api/notify/proactive', async (req: Request, res: Response) => {
@@ -191,62 +165,6 @@ export function createServerApp() {
     });
   });
 
-  // --- LEGACY CHAT ORCHESTRATOR API ---
-  app.post('/api/chat/message', async (req: Request, res: Response) => {
-    try {
-      const { sessionId, message } = req.body;
-      if (!message) {
-        return res.status(400).json({ error: 'message field is required' });
-      }
-
-      const response = await chatOrchestratorService.handleUserMessage(sessionId || 'default-session', message);
-      res.json(response);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.get('/api/chat/session/:sessionId', (req: Request, res: Response) => {
-    const rawId = req.params.sessionId;
-    const sessionId = Array.isArray(rawId) ? rawId[0] : rawId;
-    const session = chatOrchestratorService.getSession(sessionId);
-    if (!session) {
-      return res.status(404).json({ error: 'Session not found' });
-    }
-    res.json(session);
-  });
-
-  // --- LEGACY TENANCY ENDPOINTS ---
-  app.post('/api/tenancy/company', (req: Request, res: Response) => {
-    try {
-      const { name, brandVoice } = req.body;
-      const company = tenancyManager.createCompany(name, brandVoice);
-      res.status(201).json(company);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  });
-
-  app.post('/api/tenancy/project', (req: Request, res: Response) => {
-    try {
-      const { companyId, name, icpDescription, contentPillars, defaultGoals } = req.body;
-      const project = tenancyManager.createProject(companyId, name, icpDescription, contentPillars, defaultGoals);
-      res.status(201).json(project);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  });
-
-  app.post('/api/tenancy/application', (req: Request, res: Response) => {
-    try {
-      const { projectId, companyId, name, connectedPlatforms } = req.body;
-      const application = tenancyManager.createApplication(projectId, companyId, name, connectedPlatforms);
-      res.status(201).json(application);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  });
-
   return {
     app,
     campaignWorkflowService,
@@ -255,13 +173,7 @@ export function createServerApp() {
     memoryRepo,
     brandVoiceStore,
     auxiliaryService,
-    tenancyManager,
-    campaignStrategyService,
-    contentPlanService,
-    canonicalContentEngine,
-    multiPlatformAdapterEngine,
-    publishingSchedulerService,
-    closedLoopAnalyticsService,
-    chatOrchestratorService,
+    chatOrchestratorAgent,
+    fastAckWorker,
   };
 }
