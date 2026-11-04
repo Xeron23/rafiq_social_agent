@@ -37,7 +37,8 @@ export class CampaignAggregate {
     public customCaptions: Partial<PlatformVariantsVO> = {},
     public revisionHistory: Array<{ stage: number; feedback: string; at: Date }> = [],
     public readonly createdAt: Date = new Date(),
-    public updatedAt: Date = new Date()
+    public updatedAt: Date = new Date(),
+    public version: number = 1
   ) {}
 
   public static create(params: {
@@ -46,6 +47,7 @@ export class CampaignAggregate {
     type: CampaignType;
     targetChannels: ChannelKey[];
     brandVoice: BrandVoiceProfileVO;
+    version?: number;
   }): CampaignAggregate {
     const campaign = new CampaignAggregate(
       params.id,
@@ -54,7 +56,16 @@ export class CampaignAggregate {
       params.targetChannels,
       params.brandVoice,
       'DRAFT',
-      0
+      0,
+      undefined,
+      undefined,
+      undefined,
+      {},
+      {},
+      [],
+      new Date(),
+      new Date(),
+      params.version || 1
     );
     campaign.recordEvent(new CampaignCreatedEvent(campaign.id));
     return campaign;

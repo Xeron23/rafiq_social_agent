@@ -7,6 +7,7 @@
 
 import { ChatOrchestratorAgent, ChatOrchestrationResult } from '../../infrastructure/mastra/agents/chatOrchestratorAgent.js';
 import { telegramNotifier } from '../../infrastructure/telegram/telegramNotificationService.js';
+import { pool } from '../../infrastructure/database/db.js';
 
 export type ChannelSource = 'whatsapp' | 'telegram' | 'web';
 export type JobStatus = 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
@@ -76,11 +77,25 @@ export class FastAckWorker {
 
     this.jobs.set(jobId, job);
 
+    // Persist to PostgreSQL background_jobs table for crash resilience
+    pool.query(
+      `INSERT INTO background_jobs (id, channel, sender_id, user_message, status, fast_ack_reply, queued_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [jobId, params.channel, params.senderId, params.userMessage, 'QUEUED', fastAckReply, job.queuedAt]
+    ).catch(err => {
+      console.warn(`[FastAckWorker] Warning persisting job ${jobId} to DB: ${err.message}`);
+    });
+
     // Asynchronous background execution (Zero blocking on HTTP thread)
     setImmediate(async () => {
       job.status = 'PROCESSING';
       job.startedAt = new Date();
       const t0 = performance.now();
+
+      await pool.query(
+        `UPDATE background_jobs SET status = 'PROCESSING', started_at = NOW() WHERE id = $1`,
+        [jobId]
+      ).catch(() => {});
 
       try {
         console.log(`[FastAckWorker] 🚀 Processing job ${jobId} for [${params.channel}:${params.senderId}]...`);
@@ -91,6 +106,13 @@ export class FastAckWorker {
         job.completedAt = new Date();
         job.durationMs = duration;
         job.result = result;
+
+        await pool.query(
+          `UPDATE background_jobs 
+           SET status = 'COMPLETED', completed_at = NOW(), duration_ms = $1, result = $2 
+           WHERE id = $3`,
+          [duration, JSON.stringify(result), jobId]
+        ).catch(() => {});
 
         console.log(`[FastAckWorker] ✅ Job ${jobId} finished in ${duration}ms (Tools used: ${result.toolsExecuted.join(', ') || 'none'})`);
 
@@ -122,7 +144,15 @@ export class FastAckWorker {
         job.status = 'FAILED';
         job.completedAt = new Date();
         job.durationMs = duration;
-        job.error = err?.message || String(err);
+        job.error = err.message || String(err);
+
+        await pool.query(
+          `UPDATE background_jobs 
+           SET status = 'FAILED', completed_at = NOW(), duration_ms = $1, error = $2 
+           WHERE id = $3`,
+          [duration, job.error, jobId]
+        ).catch(() => {});
+
         console.error(`[FastAckWorker] ❌ Job ${jobId} failed in ${duration}ms:`, err);
       }
     });

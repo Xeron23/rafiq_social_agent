@@ -92,6 +92,43 @@ CREATE TABLE IF NOT EXISTS scheduled_posts (
 );
 
 ALTER TABLE scheduled_posts ADD COLUMN IF NOT EXISTS platform_variants JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE scheduled_posts ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 1;
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 1;
+
+-- 4b. TRANSACTIONAL OUTBOX & IDEMPOTENCY
+CREATE TABLE IF NOT EXISTS outbox_events (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    aggregate_id VARCHAR(100) NOT NULL,
+    event_type VARCHAR(100) NOT NULL,
+    payload JSONB NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+    retry_count INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    processed_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE IF NOT EXISTS idempotency_keys (
+    key VARCHAR(255) PRIMARY KEY,
+    target_id VARCHAR(100) NOT NULL,
+    action VARCHAR(100) NOT NULL,
+    response_payload JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS background_jobs (
+    id VARCHAR(100) PRIMARY KEY,
+    channel VARCHAR(50) NOT NULL,
+    sender_id VARCHAR(100) NOT NULL,
+    user_message TEXT NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'QUEUED',
+    fast_ack_reply TEXT,
+    queued_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    started_at TIMESTAMP WITH TIME ZONE,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    duration_ms INT,
+    result JSONB,
+    error TEXT
+);
 
 -- 5. NOTIFICATIONS & PREFERENCES
 CREATE TABLE IF NOT EXISTS notifications (

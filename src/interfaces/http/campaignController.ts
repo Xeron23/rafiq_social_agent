@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import axios from 'axios';
+import { idempotencyMiddleware } from './idempotencyMiddleware.js';
 import { CampaignWorkflowService } from '../../application/services/campaignWorkflowService.js';
 import { IBrandVoiceStore } from '../../domain/campaign/campaign.types.js';
 import { IPostRepository } from '../../domain/planner/post.aggregate.js';
@@ -69,7 +70,7 @@ export function createHttpRouter(
   });
 
   // --- HITL GATE 1: APPROVE / REVISE STRATEGY ---
-  router.post('/campaigns/:id/hitl/strategy', async (req: Request, res: Response) => {
+  router.post('/campaigns/:id/hitl/strategy', idempotencyMiddleware('hitl_strategy'), async (req: Request, res: Response) => {
     try {
       const rawId = req.params.id;
       const id = Array.isArray(rawId) ? rawId[0] : rawId;
@@ -95,7 +96,7 @@ export function createHttpRouter(
   });
 
   // --- HITL GATE 2: APPROVE / REVISE CONTENT PLAN ---
-  router.post('/campaigns/:id/hitl/plan', async (req: Request, res: Response) => {
+  router.post('/campaigns/:id/hitl/plan', idempotencyMiddleware('hitl_plan'), async (req: Request, res: Response) => {
     try {
       const rawId = req.params.id;
       const id = Array.isArray(rawId) ? rawId[0] : rawId;
@@ -140,7 +141,7 @@ export function createHttpRouter(
   });
 
   // --- HITL GATE 4: FINAL AUTHORIZATION & SCHEDULE ---
-  router.post('/campaigns/:id/authorize', async (req: Request, res: Response) => {
+  router.post('/campaigns/:id/authorize', idempotencyMiddleware('hitl_authorize'), async (req: Request, res: Response) => {
     try {
       const rawId = req.params.id;
       const id = Array.isArray(rawId) ? rawId[0] : rawId;

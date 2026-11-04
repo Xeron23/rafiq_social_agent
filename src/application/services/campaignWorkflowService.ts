@@ -1,4 +1,5 @@
 import { Mastra } from '@mastra/core';
+import { PostgresStore } from '@mastra/pg';
 import { buildCampaignWorkflow } from '../workflows/campaignWorkflow.js';
 import { StrategyAgent } from '../../infrastructure/mastra/agents/strategyAgent.js';
 import { PlanningAgent } from '../../infrastructure/mastra/agents/planningAgent.js';
@@ -34,7 +35,12 @@ export class CampaignWorkflowService {
     private brandVoiceStore: IBrandVoiceStore
   ) {
     const workflow = buildCampaignWorkflow();
+    const connectionString =
+      process.env.DATABASE_URL ||
+      'postgresql://postgres:postgres@127.0.0.1:5432/socialpal_db';
+
     this.mastra = new Mastra({
+      storage: new PostgresStore({ id: 'rafiq-postgres-storage', connectionString }),
       workflows: {
         campaignPipeline: workflow,
       },

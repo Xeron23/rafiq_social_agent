@@ -1,5 +1,6 @@
 import { Agent } from '@mastra/core/agent';
 import { getMastraModel } from '../../ai/modelProvider.js';
+import twitter from 'twitter-text';
 import {
   CanonicalContentVO,
   ChannelKey,
@@ -67,13 +68,24 @@ Keluarkan HANYA JSON valid. Patuhi batas ketat: X (<=280 karakter) dan Threads (
       ig: parsed.ig || `${params.canonical.sub}\n\n${fallbackCopy}\n\n${params.canonical.tags}`,
       fb: parsed.fb || `${params.canonical.headline}\n\n${fallbackCopy}`,
       th: parsed.th || (fallbackCopy.length > 450 ? fallbackCopy.slice(0, 447) + '...' : fallbackCopy),
-      x: parsed.x || (xCandidate.length > 280 ? xCandidate.slice(0, 277) + '...' : xCandidate),
+      x: parsed.x || xCandidate,
       md: parsed.md || `# ${params.canonical.headline}\n\n${params.canonical.sub}\n\n${fallbackCopy}`,
     };
 
-    if (result.x && result.x.length > 280) {
-      result.x = result.x.slice(0, 277) + '...';
+    // Rigorous Twitter/X character & weighted length compliance via twitter-text
+    if (result.x) {
+      let parsedTweet = twitter.parseTweet(result.x);
+      if (!parsedTweet.valid) {
+        // Truncate based on validRangeEnd from twitter-text
+        let safeEnd = parsedTweet.validRangeEnd > 3 ? parsedTweet.validRangeEnd - 3 : parsedTweet.validRangeEnd;
+        result.x = result.x.slice(0, safeEnd) + '...';
+        // Double-check re-validation
+        while (!twitter.parseTweet(result.x).valid && result.x.length > 5) {
+          result.x = result.x.slice(0, result.x.length - 4) + '...';
+        }
+      }
     }
+
     if (result.th && result.th.length > 500) {
       result.th = result.th.slice(0, 497) + '...';
     }
